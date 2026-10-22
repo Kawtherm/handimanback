@@ -1,0 +1,88 @@
+# Dependencies and temporary deployment files
+/vendor/
+/node_modules/
+/.wasmer-stage/
+
+# Composer and Node.js dependencies
+/vendor/
+node_modules/
+
+# Laravel public/runtime files
+/public/hot
+/public/storage
+/storage/*.key
+/bootstrap/cache/*.php
+
+# Laravel generated files
+/storage/logs/*
+!/storage/logs/.gitignore
+!/storage/logs/.gitkeep
+
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitignore
+!/storage/framework/cache/data/.gitkeep
+
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+!/storage/framework/sessions/.gitkeep
+
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+!/storage/framework/views/.gitkeep
+
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+!/storage/framework/testing/.gitkeep
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+.env.backup
+
+# PHPUnit
+/.phpunit.cache/
+/.phpunit.result.cache
+
+# Local development files
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea/
+/.vscode/
+
+# Cache and operating-system files
+*.cache
+.DS_Store
+
+# Git metadata (not needed in deployment)
+/.git/
+
+# Database dumps (import separately into MySQL)
+*.sql
+*.sql.gz
+
+# Downloaded source archives and compressed packages
+*.zip
+*.rar
+*.7z
+
+# Below Comments For Design Style & Scripts
+# /public/css/*
+# !/public/css/.gitkeep
+# /public/js/core/*
+# !/public/js/core/.gitkeep
+
+# /public/js/*.js*
+# !/public/js/.gitkeep
+# /public/js/iqonic-script/*.min.js*
+# !/public/js/iqonic-script/.gitkeep
+
+# /public/modules/**/*
+# !/public/modules/.gitkeep
+# /public/mix-manifest.json
+
+# Media library files
+/storage/media-library/**/*
