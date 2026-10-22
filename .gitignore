@@ -1,11 +1,9 @@
 # Dependencies and temporary deployment files
-/vendor/
 /node_modules/
 /.wasmer-stage/
 
-# Composer and Node.js dependencies
-/vendor/
-node_modules/
+# Composer dependencies
+# vendor/ is intentionally included for deployment
 
 # Laravel public/runtime files
 /public/hot
@@ -39,6 +37,8 @@ node_modules/
 .env.*
 !.env.example
 .env.backup
+/auth.json
+/.wasmer-key.tmp
 
 # PHPUnit
 /.phpunit.cache/
@@ -57,7 +57,7 @@ yarn-error.log
 *.cache
 .DS_Store
 
-# Git metadata (not needed in deployment)
+# Git metadata
 /.git/
 
 # Database dumps (import separately into MySQL)
