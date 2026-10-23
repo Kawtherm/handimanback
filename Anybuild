@@ -21,6 +21,10 @@ laravel_serve(
     config,
     build,
     name = "ejobs",
+    build_pre = [
+        copy("composer.json", "/app/composer.json"),
+        copy("composer.lock", "/app/composer.lock"),
+    ],
     build_post = [
         run("rm -rf node_modules", group = "build"),
     ],
