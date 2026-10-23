@@ -21,9 +21,6 @@ laravel_serve(
     config,
     build,
     name = "ejobs",
-    build_pre = [
-        copy(".", "/app"),
-    ],
     build_post = [
         run("rm -rf node_modules", group = "build"),
     ],
