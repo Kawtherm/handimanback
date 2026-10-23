@@ -6,7 +6,7 @@ config = laravel_config(
         "start": "php -S 0.0.0.0:$PORT -t public",
     },
     node_package_manager = "npm",
-    node_build_command = "npm install && npm run production && rm -rf node_modules resources/js resources/scss public/scss tests .github package.json package-lock.json webpack.mix.js .npmrc",
+    node_build_command = "npm install && npm run production && rm -rf node_modules resources/js resources/scss public/scss tests .github package.json package-lock.json webpack.mix.js .npmrc Database",
     node_version = "24",
     php_framework = "laravel",
     composer_enable = True,
