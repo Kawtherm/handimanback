@@ -86,3 +86,4 @@ yarn-error.log
 
 # Media library files
 /storage/media-library/**/*
+/vendor
