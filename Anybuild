@@ -6,7 +6,7 @@ config = laravel_config(
         "start": "php -S 0.0.0.0:$PORT -t public",
     },
     node_package_manager = "npm",
-    node_build_command = "npm run production",
+    node_build_command = "npm run production && rm -rf node_modules",
     node_version = "24",
     php_framework = "laravel",
     composer_enable = True,
@@ -22,10 +22,6 @@ laravel_serve(
     build,
     name = "ejobs",
     build_pre = [
-        copy("composer.json", "/app/composer.json"),
-        copy("composer.lock", "/app/composer.lock"),
-    ],
-    build_post = [
-        run("rm -rf node_modules", group = "build"),
+        copy(".", "/app"),
     ],
 )
