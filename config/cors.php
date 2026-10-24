@@ -6,20 +6,18 @@ return [
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', '/login','/logout'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // You MUST specify the exact origins. You cannot use '*' with credentials.
+    'allowed_origins' => [
+        'https://ejobs-8a8213gz4-kawthermouli-1310.vercel.app', // Your exact Vercel URL
+        'http://localhost:8000', // Keep this so you can still test locally
+        'http://127.0.0.1:8000',
+    ],
 
     'allowed_origins_patterns' => [],
 
