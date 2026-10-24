@@ -1,66 +1,144 @@
+# ============================================================
+#  Laravel 11 on Vercel — Container Runtime
+#  Base: PHP 8.3 + Apache
+# ============================================================
 FROM php:8.3-apache
 
+# ---- Basic Apache / PHP environment ----
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_NO_INTERACTION=1
+
+# ============================================================
+#  1. System dependencies
+#     (libz-dev fixes the pdo_mysql "checking for the location
+#      of libz... no" failure you hit; the others are needed
+#      for gd / intl / zip / mbstring / curl)
+# ============================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    unzip \
-    zip \
-    libcurl4-openssl-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libicu-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+        git \
+        unzip \
+        curl \
+        ca-certificates \
+        libz-dev \
+        libzip-dev \
+        libonig-dev \
+        libxml2-dev \
+        libpng-dev \
+        libjpeg62-turbo-dev \
+        libfreetype6-dev \
+        libicu-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================
+#  2. PHP extensions
+# ============================================================
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
-        curl \
-        dom \
         exif \
         gd \
         intl \
         mbstring \
         opcache \
+        pcntl \
+        pdo \
         pdo_mysql \
-        simplexml \
-        xml \
-        xmlreader \
-        xmlwriter \
-        zip \
-    && a2enmod rewrite headers \
-    && rm -rf /var/lib/apt/lists/*
+        zip
 
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+# ============================================================
+#  3. Apache modules + vhost pointing at /public
+# ============================================================
+RUN a2enmod rewrite headers \
+    && printf '%s\n' \
+       '<VirtualHost *:80>' \
+       '    ServerName localhost' \
+       '    DocumentRoot /var/www/html/public' \
+       '' \
+       '    <Directory /var/www/html/public>' \
+       '        Options Indexes FollowSymLinks' \
+       '        AllowOverride All' \
+       '        Require all granted' \
+       '        DirectoryIndex index.php index.html' \
+       '    </Directory>' \
+       '' \
+       '    <FilesMatch "\.php$">' \
+       '        SetHandler application/x-httpd-php' \
+       '    </FilesMatch>' \
+       '' \
+       '    ErrorLog ${APACHE_LOG_DIR}/error.log' \
+       '    CustomLog ${APACHE_LOG_DIR}/access.log combined' \
+       '</VirtualHost>' \
+       > /etc/apache2/sites-available/000-default.conf \
+    && a2dissite 000-default 2>/dev/null || true \
+    && a2ensite 000-default \
+    && printf 'ServerName localhost\n' > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername
+
+# ============================================================
+#  4. Composer (from official image)
+# ============================================================
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# ============================================================
+#  5. Install PHP dependencies (cached layer)
+# ============================================================
+COPY composer.json composer.lock ./
+
+RUN composer install \
+        --no-dev \
+        --no-scripts \
+        --no-autoloader \
+        --prefer-dist \
+        --no-interaction \
+        --no-progress
+
+# ============================================================
+#  6. Copy application source
+# ============================================================
 COPY . .
 
-RUN mkdir -p \
+# ============================================================
+#  7. Finish autoload + permissions
+# ============================================================
+RUN composer dump-autoload --optimize --no-dev --no-interaction \
+    && mkdir -p \
         storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
+        storage/framework/testing \
         storage/logs \
+        storage/app/public \
         bootstrap/cache \
-    && rm -f bootstrap/cache/config.php \
-        bootstrap/cache/services.php \
-        bootstrap/cache/packages.php \
-    && composer install \
-        --no-dev \
-        --prefer-dist \
-        --no-interaction \
-        --no-progress \
-        --optimize-autoloader \
-    && sed -ri \
-        's!/var/www/html!/var/www/html/public!g' \
-        /etc/apache2/sites-available/000-default.conf \
-    && printf '<Directory /var/www/html/public>\n AllowOverride All\n Require all granted\n</Directory>\nServerTokens Prod\nServerSignature Off\n' \
-        > /etc/apache2/conf-available/laravel.conf \
-    && a2enconf laravel \
     && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R ug+rwx storage bootstrap/cache
+    && chmod -R ug+rwX storage bootstrap/cache \
+    && rm -rf /var/www/html/.git
 
+# ============================================================
+#  8. Runtime
+#     - Vercel provides $PORT; Apache must listen on it.
+#     - Vercel's filesystem is read-only except /tmp, so we
+#       relink storage/ into /tmp at boot if needed.
+# ============================================================
 EXPOSE 80
 
-CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen ${PORT:-80}/g\" /etc/apache2/ports.conf && sed -i \"s/:80/:${PORT:-80}/g\" /etc/apache2/sites-available/*.conf && apache2-foreground"]
+CMD ["sh", "-c", "\
+  if [ ! -w /var/www/html/storage ] || [ ! -w /var/www/html/bootstrap/cache ]; then \
+    mkdir -p /tmp/laravel-storage/framework/{cache/data,sessions,views,testing} \
+             /tmp/laravel-storage/logs \
+             /tmp/laravel-storage/app/public \
+             /tmp/laravel-bootstrap-cache; \
+    rm -rf /var/www/html/storage /var/www/html/bootstrap/cache; \
+    ln -s /tmp/laravel-storage /var/www/html/storage; \
+    ln -s /tmp/laravel-bootstrap-cache /var/www/html/bootstrap/cache; \
+    chown -R www-data:www-data /tmp/laravel-storage /tmp/laravel-bootstrap-cache; \
+  fi; \
+  sed -ri \"s/^Listen 80$/Listen ${PORT:-80}/\" /etc/apache2/ports.conf; \
+  sed -ri \"s/<VirtualHost \\*:80>/<VirtualHost *:${PORT:-80}>/\" /etc/apache2/sites-available/000-default.conf; \
+  exec apache2-foreground \
+"]
