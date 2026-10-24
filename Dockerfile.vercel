@@ -101,8 +101,6 @@ COPY . .
 
 # ============================================================
 #  7. Finish autoload + permissions
-#     IMPORTANT: --no-scripts here too, otherwise
-#     package:discover runs and needs a live DB.
 # ============================================================
 RUN composer dump-autoload --optimize --no-dev --no-scripts --no-interaction \
     && mkdir -p \
@@ -119,9 +117,6 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts --no-interaction \
 
 # ============================================================
 #  8. Runtime
-#     - Vercel injects env vars + $PORT at container start.
-#     - Filesystem is read-only except /tmp → relink storage.
-#     - package:discover runs here (DB IS reachable now).
 # ============================================================
 EXPOSE 80
 
@@ -136,6 +131,8 @@ CMD ["sh", "-c", "\
     ln -s /tmp/laravel-bootstrap-cache /var/www/html/bootstrap/cache; \
     chown -R www-data:www-data /tmp/laravel-storage /tmp/laravel-bootstrap-cache; \
   fi; \
+  echo '[boot] creating installer lock file ...'; \
+  touch /var/www/html/storage/installed || echo '[boot] could not create installed file'; \
   echo '[boot] running package:discover ...'; \
   php artisan package:discover --ansi || echo '[boot] package:discover failed (non-fatal)'; \
   echo '[boot] caching config ...'; \
