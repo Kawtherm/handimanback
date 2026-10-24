@@ -2,6 +2,7 @@
   "version": 2,
   "services": {
     "app": {
+      "root": ".",
       "runtime": "container",
       "entrypoint": "Dockerfile.vercel"
     }
@@ -9,7 +10,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/app"
+      "destination": { "service": "app" }
     }
   ]
 }
