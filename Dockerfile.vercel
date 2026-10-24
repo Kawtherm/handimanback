@@ -4,16 +4,12 @@
 # ============================================================
 FROM php:8.3-apache
 
-# ---- Basic Apache / PHP environment ----
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
     COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_NO_INTERACTION=1
 
 # ============================================================
 #  1. System dependencies
-#     (libz-dev fixes the pdo_mysql "checking for the location
-#      of libz... no" failure you hit; the others are needed
-#      for gd / intl / zip / mbstring / curl)
 # ============================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
@@ -86,7 +82,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # ============================================================
-#  5. Install PHP dependencies (cached layer)
+#  5. Install PHP dependencies (no scripts — no DB at build time)
 # ============================================================
 COPY composer.json composer.lock ./
 
@@ -105,8 +101,10 @@ COPY . .
 
 # ============================================================
 #  7. Finish autoload + permissions
+#     IMPORTANT: --no-scripts here too, otherwise
+#     package:discover runs and needs a live DB.
 # ============================================================
-RUN composer dump-autoload --optimize --no-dev --no-interaction \
+RUN composer dump-autoload --optimize --no-dev --no-scripts --no-interaction \
     && mkdir -p \
         storage/framework/cache/data \
         storage/framework/sessions \
@@ -121,9 +119,9 @@ RUN composer dump-autoload --optimize --no-dev --no-interaction \
 
 # ============================================================
 #  8. Runtime
-#     - Vercel provides $PORT; Apache must listen on it.
-#     - Vercel's filesystem is read-only except /tmp, so we
-#       relink storage/ into /tmp at boot if needed.
+#     - Vercel injects env vars + $PORT at container start.
+#     - Filesystem is read-only except /tmp → relink storage.
+#     - package:discover runs here (DB IS reachable now).
 # ============================================================
 EXPOSE 80
 
@@ -138,6 +136,10 @@ CMD ["sh", "-c", "\
     ln -s /tmp/laravel-bootstrap-cache /var/www/html/bootstrap/cache; \
     chown -R www-data:www-data /tmp/laravel-storage /tmp/laravel-bootstrap-cache; \
   fi; \
+  echo '[boot] running package:discover ...'; \
+  php artisan package:discover --ansi || echo '[boot] package:discover failed (non-fatal)'; \
+  echo '[boot] caching config ...'; \
+  php artisan config:cache || echo '[boot] config:cache failed (non-fatal)'; \
   sed -ri \"s/^Listen 80$/Listen ${PORT:-80}/\" /etc/apache2/ports.conf; \
   sed -ri \"s/<VirtualHost \\*:80>/<VirtualHost *:${PORT:-80}>/\" /etc/apache2/sites-available/000-default.conf; \
   exec apache2-foreground \
